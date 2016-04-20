@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include "blurfilter.h"
 #include "ppmio.h"
+#include "mpi.h"
 
 
 pixel* pix(pixel* image, const int xx, const int yy, const int xsize)
@@ -36,8 +37,7 @@ void initPixel(MPI_Datatype& pixelType)
 }
 
 void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, const double *w){
-	MPI::Status status;
-	const MPI_Comm com = MPI_COMM_WORLD;
+	MPI_Status status;
 	const int root = 0; //root process
   	const int myid = MPI::COMM_WORLD.Get_rank(); // Rank of processes
   	const int numProc = MPI::COMM_WORLD.Get_size(); // N.o. processes
@@ -60,19 +60,19 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 	pixel* localSrc = new pixel[localSize];
 	pixel* localDist = new pixel[localSize+(2*localRad)];
 
-	MPI_Scatter(src, localSize*pixelTypeSize, pixelType, localSrc, localSizez*pixelTypeSize, pixelType, root, com);
+	MPI_Scatter(src, localSize*pixelTypeSize, pixelType, localSrc, localSize*pixelTypeSize, pixelType, root, MPI_COMM_WORLD);
 	
 	// last process getting the slack pixels
 	const int leftoverSize = (ysize % numProc)*xsize;
 	if ( (myid == root) && (ysize % numProc != 0) ) {
 		const int leftoverOffset = ysize*xsize - leftoverSize;
 
-		MPI_Send(src+leftoverOffset, leftoverSize*pixelTypeSize, pixelType, numProc-1, 0, com);
+		MPI_Send(src+leftoverOffset, leftoverSize*pixelTypeSize, pixelType, numProc-1, 0, MPI_COMM_WORLD);
 	}
 	else if( (myid == numProc-1) && (ysize % numProc) != 0){
 
 		MPI_Recv(localSrc+localSize-leftoverSize, leftoverSize*pixelTypeSize,
-			 pixelType, root, 0, com, &status);
+			 pixelType, root, 0, MPI_COMM_WORLD, &status);
 	} 
 
 	// Horizontal blurring
@@ -107,12 +107,12 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 
 	const int dataSize = pixelTypeSize*localRad;
 	if (myid != root) {
-		MPI_SEND(localDist+localRad, dataSize, pixelType, myid-1, 1 com);
-		MPI_Recv(localDist, dataSize, pixelType, myid-1, 2, com &status);
+		MPI_Send(localDist+localRad, dataSize, pixelType, myid-1, 1, MPI_COMM_WORLD);
+		MPI_Recv(localDist, dataSize, pixelType, myid-1, 2, MPI_COMM_WORLD, &status);
 	}
 	if (myid != numProc-1) {
-		MPI_Recv(localDist+localRad+(rowInt*xsize), dataSize, pixelType, myid+1, 1, com &status);
-		MPI_Send(localDist+(rowInt*xsize), dataSize, pixelType, myid+1, 2, com);
+		MPI_Recv(localDist+localRad+(rowInt*xsize), dataSize, pixelType, myid+1, 1, MPI_COMM_WORLD, &status);
+		MPI_Send(localDist+(rowInt*xsize), dataSize, pixelType, myid+1, 2, MPI_COMM_WORLD);
 	}
 
 	int min = 0;
@@ -166,7 +166,7 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 		displace[i] = i * (ysize/numProc)*xsize*pixelTypeSize;
 	}
 	
-	MPI_Gatherv(localSrc, localSize*pixelTypeSize, pixelType, src, recvCount, displace, pixelType, root, com);
+	MPI_Gatherv(localSrc, localSize*pixelTypeSize, pixelType, src, recvCount, displace, pixelType, root, MPI_COMM_WORLD);
 	
 	delete[] localSrc;
 	delete[] localDist;

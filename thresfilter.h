@@ -11,6 +11,13 @@ typedef struct _pixel {
     unsigned char r,g,b;
 } pixel;
 
-void thresfilter(const int xsize, const int ysize, pixel* src);
+struct threadDataThresfilter{
+  int threadId;
+  int xsize;
+  int ysize;
+  pixel* src;
+};
+
+void* thresfilter(void* threadParam);
 
 #endif

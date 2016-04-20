@@ -1,8 +1,18 @@
+#include <pthread.h>
 #include "thresfilter.h"
 
-void thresfilter(const int xsize, const int ysize, pixel* src){
+void* thresfilter(void* threadParam){
 #define uint unsigned int 
 
+  
+  
+  
+  // Get parameters for computations from threadData
+  struct threadDataThresfilter* threadData = (threadDataThresfilter*)threadParam;
+  const int xsize = threadData->xsize;
+  const int ysize = threadData->ysize;
+  pixel* src = threadData->src;
+  
   uint sum, i, psum, nump;
 
   nump = xsize * ysize;
@@ -22,4 +32,5 @@ void thresfilter(const int xsize, const int ysize, pixel* src){
       src[i].r = src[i].g = src[i].b = 255;
     }
   }
+  pthread_exit(0);
 }

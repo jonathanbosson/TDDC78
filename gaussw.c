@@ -5,6 +5,7 @@
 
  */
 #include <math.h>
+#include "mpi.h"
 
 #define MAX_X 1.33
 #define Pi 3.14159
@@ -17,7 +18,6 @@
 void get_gauss_weights(int n, double* weightsOut) {
 	double x;
 	int i;
-	const MPI_Comm com = MPI_COMM_WORLD;
 	const int root = 0; 
 	const int myid = MPI::COMM_WORLD.Get_rank(); // Rank of processes
   	const int numProc = MPI::COMM_WORLD.Get_size(); // N.o. processes
@@ -50,5 +50,5 @@ void get_gauss_weights(int n, double* weightsOut) {
 		displace[i] = i * (n / numProc);
 	}
 	// Gather all weightProc and save it to weightOut
-	MPI_Allgatherv(&procWeight, workPerProc, MPI_DOUBLE, weightsOut, recvCount, displace, MPI_DOUBLE, com);
+	MPI_Allgatherv(&procWeight, workPerProc, MPI_DOUBLE, weightsOut, recvCount, displace, MPI_DOUBLE, MPI_COMM_WORLD);
 }

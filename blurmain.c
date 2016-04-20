@@ -1,4 +1,4 @@
-#include <mpi.h>
+#include "mpi.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,9 +9,8 @@
 
 
 int main (int argc, char ** argv) {
-	MPI::Status status;
+	MPI_Status status;
 	MPI_Init(&argc, &argv);
-	const MPI_Comm com = MPI_COMM_WORLD;
 	const int root = 0; //root process
   	const int myid = MPI::COMM_WORLD.Get_rank(); // Rank of processes
   	const int numProc = MPI::COMM_WORLD.Get_size(); // N.o. processes
@@ -49,14 +48,14 @@ int main (int argc, char ** argv) {
 	}
 
 	// Broadcast radius to all processes
-	MPI_Bcast(&radius, 1, MPI_INT, root, com);
+	MPI_Bcast(&radius, 1, MPI_INT, root, MPI_COMM_WORLD);
 
     /* filter */
     get_gauss_weights(radius, w);
 
 	// Broadcast dimension of image
-	MPI_Bcast(&xsize, 1, MPI_INT, root, com);
-	MPI_Bcast(&ysize, 1, MPI_INT, root, com);
+	MPI_Bcast(&xsize, 1, MPI_INT, root, MPI_COMM_WORLD);
+	MPI_Bcast(&ysize, 1, MPI_INT, root, MPI_COMM_WORLD);
 
     printf("Calling filter\n");
 

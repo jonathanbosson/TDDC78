@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "ppmio.h"
+//#include "mpi.h"
 
 int read_ppm (const char * fname, 
 	       int * xpix, int * ypix, int * max, char * data) {
