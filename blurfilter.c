@@ -29,8 +29,8 @@ void initPixel(MPI_Datatype& pixelType)
   int blockcounts[] = {1, 1, 1};
   MPI_Aint disp[] = {0, 0, 0};
   MPI_Datatype oldTypes[structSize] = { MPI::UNSIGNED_CHAR,
-					 					MPI::UNSIGNED_CHAR,
-					 					MPI::UNSIGNED_CHAR };
+					MPI::UNSIGNED_CHAR,
+ 					MPI::UNSIGNED_CHAR };
 
   MPI_Type_struct(structSize, blockcounts, disp, oldTypes, &pixelType);
   MPI_Type_commit(&pixelType);
@@ -55,7 +55,7 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 
 	const int rowStart = rowInt*myid;
 	const int localSize = rowInt*xsize;
-	const int localRad = radius*xsize; // ?
+	const int localRad = radius*xsize;
 
 	pixel* localSrc = new pixel[localSize];
 	pixel* localDist = new pixel[localSize+(2*localRad)];
@@ -125,7 +125,7 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 	}
 
 	// Vertical blurring
-  for (y=0; y<rowInt+radius; y++) {
+  for (y=radius; y<rowInt+radius; y++) {
 	for (x=0; x<xsize; x++) {
 	  r = w[0] * pix(localDist, x, y, xsize)->r;
 	  g = w[0] * pix(localDist, x, y, xsize)->g;
@@ -134,14 +134,14 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 	  for ( wi=1; wi <= radius; wi++) {
 	wc = w[wi];
 	y2 = y - wi;
-	if(y2 >= 0) {
+	if(y2 >= min) {
 	  r += wc * pix(localDist, x, y2, xsize)->r;
 	  g += wc * pix(localDist, x, y2, xsize)->g;
 	  b += wc * pix(localDist, x, y2, xsize)->b;
 	  n += wc;
 	}
 	y2 = y + wi;
-	if(y2 < ysize) {
+	if(y2 < max) {
 	  r += wc * pix(localDist, x, y2, xsize)->r;
 	  g += wc * pix(localDist, x, y2, xsize)->g;
 	  b += wc * pix(localDist, x, y2, xsize)->b;
