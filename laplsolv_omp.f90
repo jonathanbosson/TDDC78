@@ -14,7 +14,7 @@ use omp_lib
   double precision,dimension(n)       :: tmp1,tmp2
   double precision                    :: error,x
   real                                :: t1,t0
-  integer                             :: i,j,k, threadId, numThreads
+  integer                             :: i,j,k, threadId
   character(len=20)                   :: str
   
   ! Save the next iteration to process the row
@@ -31,7 +31,7 @@ use omp_lib
   t0 = omp_get_wtime()
 
   do i=1,n+1
-    rowNextIteration(i)=1
+    row_next_iteration(i)=1
   end do
   !$omp end do
   !$omp end parallel
