@@ -16,7 +16,7 @@ pixel* pix(pixel* image, const int xx, const int yy, const int xsize)
 
 #ifdef DBG
   if(off >= MAX_PIXELS) {
-    fprintf(stderr, "\n Terribly wrong: %d %d %d\n",xx,yy,xsize);
+    fprintf(stderr, "\n Badbadbad: %d %d %d\n",xx,yy,xsize);
   }
 #endif
   return (image + off);
@@ -55,7 +55,7 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 
 	const int rowStart = rowInt*myid;
 	const int localSize = rowInt*xsize;
-	const int localRad = radius*xsize; // ?
+	const int localRad = radius*xsize;
 
 	pixel* localSrc = new pixel[localSize];
 	pixel* localDist = new pixel[localSize+(2*localRad)];
@@ -107,11 +107,15 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 
 	const int dataSize = pixelTypeSize*localRad;
 	if (myid != root) {
+		// Send radius pixels to the process above
 		MPI_Send(localDist+localRad, dataSize, pixelType, myid-1, 1, MPI_COMM_WORLD);
+		// Recieve rows from processes above for y-blur
 		MPI_Recv(localDist, dataSize, pixelType, myid-1, 2, MPI_COMM_WORLD, &status);
 	}
 	if (myid != numProc-1) {
+		// Get rows from processes below for y-blur
 		MPI_Recv(localDist+localRad+(rowInt*xsize), dataSize, pixelType, myid+1, 1, MPI_COMM_WORLD, &status);
+		// Send radius pixels to the process below
 		MPI_Send(localDist+(rowInt*xsize), dataSize, pixelType, myid+1, 2, MPI_COMM_WORLD);
 	}
 
@@ -125,7 +129,7 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 	}
 
 	// Vertical blurring
-  for (y=0; y<rowInt+radius; y++) {
+  for (y=radius; y<rowInt+radius; y++) {
 	for (x=0; x<xsize; x++) {
 	  r = w[0] * pix(localDist, x, y, xsize)->r;
 	  g = w[0] * pix(localDist, x, y, xsize)->g;
@@ -134,14 +138,14 @@ void blurfilter(const int xsize, const int ysize, pixel* src, const int radius, 
 	  for ( wi=1; wi <= radius; wi++) {
 	wc = w[wi];
 	y2 = y - wi;
-	if(y2 >= 0) {
+	if(y2 >= min) {
 	  r += wc * pix(localDist, x, y2, xsize)->r;
 	  g += wc * pix(localDist, x, y2, xsize)->g;
 	  b += wc * pix(localDist, x, y2, xsize)->b;
 	  n += wc;
 	}
 	y2 = y + wi;
-	if(y2 < ysize) {
+	if(y2 < max) {
 	  r += wc * pix(localDist, x, y2, xsize)->r;
 	  g += wc * pix(localDist, x, y2, xsize)->g;
 	  b += wc * pix(localDist, x, y2, xsize)->b;

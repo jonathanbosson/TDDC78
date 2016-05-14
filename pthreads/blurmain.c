@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <iostream>
 #include <pthread.h>
-#include <string>
+#include <string.h>
 #include <semaphore.h>
 #include <time.h>
 
@@ -153,7 +153,6 @@ int main (int argc, char ** argv) {
 		
 	if(write_ppm (argv[4], xsize, ysize, (char *)src) != 0)
 		  exit(1);
-	}
 
 	// Delete to avoid memory leak
 	delete[] src;

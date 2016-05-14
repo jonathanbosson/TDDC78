@@ -27,30 +27,30 @@ int getYEnd(const int threadId, const int numThreads, const int ysize) {
 
 int main (int argc, char ** argv) {
     int xsize, ysize, colmax;
-    pixel src[MAX_PIXELS];
+    pixel* src = new pixel[MAX_PIXELS];
     struct timespec stime, etime;
 
     /* Take care of the arguments */
 
-    if (argc != 3) {
-	fprintf(stderr, "Usage: %s infile outfile\n", argv[0]);
-	exit(1);
+    if (argc != 4) {
+    	fprintf(stderr, "Usage: %s infile outfile\n", argv[0]);
+    	exit(1);
     }
 
     /* read file */
-    if(read_ppm (argv[1], &xsize, &ysize, &colmax, (char *) src) != 0)
+    if(read_ppm (argv[2], &xsize, &ysize, &colmax, (char *) src) != 0)
         exit(1);
 
     if (colmax > 255) {
-	fprintf(stderr, "Too large maximum color-component value\n");
-	exit(1);
+    	fprintf(stderr, "Too large maximum color-component value\n");
+    	exit(1);
     }
     
     
-    const int numThreads = 2;
+    const int numThreads = atoi(argv[1]);
     if(numThreads < 1){
       printf("Number of threads need to be higher than zero\n");
-      return 4;
+      exit(1);
     }
     
     
@@ -73,8 +73,8 @@ int main (int argc, char ** argv) {
     
       int rc = pthread_create(&threads[i], NULL, thresfilter, (void*)&threadData[i]);
       if(rc){
-	printf("Error creating thread, %d", rc);
-	return 6;
+      	printf("Error creating thread, %d", rc);
+      	exit(1);
       } 
     }
 
@@ -83,8 +83,8 @@ int main (int argc, char ** argv) {
     for(int i = 0; i < numThreads; i++){
       int rc = pthread_join(threads[i], &status);
       if(rc) {
-	printf("Error in thread join: %d", rc);
-	return 7;
+      	printf("Error in thread join: %d", rc);
+      	exit(1);
       }
     }
 
@@ -96,9 +96,9 @@ int main (int argc, char ** argv) {
     /* write result */
     printf("Writing output file\n");
     
-    if(write_ppm (argv[2], xsize, ysize, (char *)src) != 0)
+    if(write_ppm (argv[3], xsize, ysize, (char *)src) != 0)
       exit(1);
 
-
+    delete[] src;
     return(0);
 }

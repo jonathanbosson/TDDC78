@@ -29,7 +29,7 @@ void get_gauss_weights(int n, double* weightsOut) {
 	}
 	
 	// Work buffer of active process
-	double procWeight[workPerProc];
+	double procWeight[const_cast<const int>(workPerProc)];
 	// Where in n the active process is in 
 	const int start = myid*workPerProc;
 	// Number of elements received
@@ -38,14 +38,14 @@ void get_gauss_weights(int n, double* weightsOut) {
 	int displace[numProc]; 
 	
 	for(i = start; i < start+workPerProc; i++) {
-		x = (double)i * MAX_X/n;
+		x = (double)i * MAX_X/10;
 		procWeight[i-start] = exp(-x*x * Pi);
 	}
 
 	// Determine amount of data to be received from each process
 	for (i = 0; i < numProc; i++) {
 		recvCount[i] = n / numProc;
-		if (i == numProc-1)
+		if (i == numProc - 1)
 			recvCount[i] += n % numProc;
 		displace[i] = i * (n / numProc);
 	}

@@ -1,21 +1,16 @@
-
-CFLAGS = 
+CFLAGS =  
 
 LFLAGS= -lpthread -lrt -lm
 
-all: thresc #blurc
+all: blurc thresc
 
 clean:
-	-$(RM) *.o blur thresc
+	-$(RM) *.o blurc thresc
 
-#blurc: ppmio.o gaussw.o blurfilter.o blurmain.o
-#	mpic++ -o $@ ppmio.o gaussw.o blurfilter.o blurmain.o $(LFLAGS)
+blurc: ppmio.o gaussw.o blurfilter.o blurmain.o
+	icpc -fast -o $@ -openmp ppmio.o gaussw.o blurfilter.o blurmain.o $(LFLAGS)
 
 thresc: thresmain.o ppmio.o thresfilter.o
-	gcc -o -fopenmp $@ thresmain.o ppmio.o thresfilter.o $(LFLAGS)
-	
+	icpc -fast -o $@ -openmp thresmain.o ppmio.o thresfilter.o $(LFLAGS)
 %.o:%.c
-	mpic++ -c -o $@ $^ $(CFLAGS)
-
-arc:
-	tar cf - *.c *.h *.f90 Makefile Makefile.sgi|gzip - > filters.tar.gz
+	icpc -c -o $@ $^ $(CFLAGS) 
