@@ -36,7 +36,6 @@ int getYEnd(const int threadId, const int numThreads, const int ysize) {
 int main (int argc, char ** argv) {
 	int radius;
     int xsize, ysize, colmax;
-    pixel src[MAX_PIXELS];
     struct timespec stime, etime;
     double w[MAX_RAD];
 
@@ -46,7 +45,7 @@ int main (int argc, char ** argv) {
     /* Take care of the arguments */
 
 	if (argc != 5) {
-		fprintf(stderr, "Usage: %s radius infile outfile\n", argv[0]);
+		fprintf(stderr, "Usage: %s radius cores infile outfile\n", argv[0]);
 		exit(1);
 	}
 	radius = atoi(argv[1]);
@@ -80,7 +79,7 @@ int main (int argc, char ** argv) {
 
     // pthreads stuff ////
 
-    pthread_t threads[MAX_THREADS]
+    pthread_t threads[MAX_THREADS];
     struct threadDataBlurfilter threadData[MAX_THREADS];
 
     // Start blurfilterX
@@ -97,7 +96,7 @@ int main (int argc, char ** argv) {
 
     	int rc = pthread_create(&threads[i], NULL, blurfilterX, (void*)&threadData[i]);
     	if (rc) {
-    		fprintf("Error creating thread %d", rc);
+    		fprintf(stderr, "Error creating thread %d", rc);
     		exit(1);
     	}
     }
@@ -107,7 +106,7 @@ int main (int argc, char ** argv) {
     for (int i = 0; i < numThreads; ++i) {
     	int rc = pthread_join(threads[i], &status);
     	if (rc) {
-    		fprintf("Error in joining thread %d", rc);
+    		fprintf(stderr, "Error in joining thread %d", rc);
     		exit(1);
     	}
     }
@@ -127,7 +126,7 @@ int main (int argc, char ** argv) {
 
     	int rc = pthread_create(&threads[i], NULL, blurfilterY, (void*)&threadData[i]);
     	if (rc) {
-    		fprintf("Error creating thread %d", rc);
+    		fprintf(stderr, "Error creating thread %d", rc);
     		exit(1);
     	}
     }
@@ -136,7 +135,7 @@ int main (int argc, char ** argv) {
     for (int i = 0; i < numThreads; ++i) {
     	int rc = pthread_join(threads[i], &status);
     	if (rc) {
-    		fprintf("Error in joining thread %d", rc);
+    		fprintf(stderr, "Error in joining thread %d", rc);
     		exit(1);
     	}
     }

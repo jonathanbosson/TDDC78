@@ -26,7 +26,7 @@ pixel* pix(pixel* image, const int xx, const int yy, const int xsize)
 }
 
 
-void* blurfilter_x(void* tParam){
+void* blurfilterX(void* tParam){
   struct threadDataBlurfilter* thread_data = (threadDataBlurfilter*)tParam;
   const int xsize = threadData->xsize;
 
@@ -73,7 +73,7 @@ void* blurfilter_x(void* tParam){
   pthread_exit(0);
 }
 
-void* blurfilter_y(void* tParam){
+void* blurfilterY(void* tParam){
   struct threadDataBlurfilter* threadData = (threadDataBlurfilter*)tParam;
   const int xsize = thread_data->xsize;
   const int ysize = thread_data->ysize;
