@@ -26,15 +26,19 @@ use omp_lib
   T(n+1   , 0:n+1) = 2.0D0
   
 
-  call getarag(1, arg)
-  read(arg, '(i10)' ) numThreads
-  call omp_set_num_threads(numThreads)
+  !call getarg(1, arg)
+  !read(arg, '(i10)' ) numThreads
+  !call omp_set_num_threads(numThreads)
+
+  numThreads = omp_get_max_threads()
+
+  call cpu_time(t0)
+  !t0 = omp_get_wtime()
 
   ! Solve the linear system of equations using the Jacobi method
-  t0 = omp_get_wtime()
-
   do k=1, maxiter
     error = 0.0D0
+
     !$OMP parallel default(private) shared(T,k) reduction(max:error)
     myid = omp_get_thread_num()
     teamSize = omp_get_num_threads()
@@ -57,7 +61,7 @@ use omp_lib
       else
         tmpRight = T(1:n, j+1)
       end if
-      T(1:n, j) = ( T(0:n-1, j) + T(2:n, j) + tmpRight + tmpLeft )/4.0D0
+      T(1:n, j) = ( T(0:n-1, j) + T(2:n+1, j) + tmpRight + tmpLeft )/4.0D0
       error = max( error, maxval( abs(tmpMid - T(1:n, j)) ) )
       tmpLeft = tmpMid
     end do
@@ -68,12 +72,13 @@ use omp_lib
     end if
   end do
 
-  t1 = omp_get_wtime()
+  !t1 = omp_get_wtime()
+  call cpu_time(t1)
 
 
-  write(unit=*, fmt=*) 'Time:',t1-t0
-  ! write(unit=*,fmt=*) 'Time:',t1-t0,'Number of Iterations:',k
-  ! write(unit=*,fmt=*) 'Temperature of element T(1,1)  =',T(1,1)
+  !write(unit=*, fmt=*) 'Time:',t1-t0
+  write(unit=*,fmt=*) 'Time:',t1-t0,'Number of Iterations:',k
+  write(unit=*,fmt=*) 'Temperature of element T(1,1)  =',T(1,1)
 
   ! Uncomment the next part if you want to write the whole solution
   ! to a file. Useful for plotting. 
