@@ -11,14 +11,13 @@ use omp_lib
   integer, parameter                  :: n=1000, maxiter=1000
   double precision,parameter          :: tol=1.0E-3
   double precision,dimension(0:n+1,0:n+1) :: T
-  double precision,dimension(n)       :: tmp1,tmp2
+  double precision,dimension(n)       :: tmpLeft, tmpMid, tmpRight,tmpLast
   double precision                    :: error,x
   real                                :: t1,t0
-  integer                             :: i,j,k, threadId
-  character(len=20)                   :: str
-  
-  ! Save the next iteration to process the row
-  integer, dimensions(n+1)            :: rowNextIteration
+  integer                             :: j,k, numThreads
+  integer                             :: myid, teamSize, evCols, myCols
+  character(len=20)                   :: str, arg
+
 
   ! Set boundary conditions and initial values for the unknowns
   T=0.0D0
@@ -27,56 +26,54 @@ use omp_lib
   T(n+1   , 0:n+1) = 2.0D0
   
 
+  call getarag(1, arg)
+  read(arg, '(i10)' ) numThreads
+  call omp_set_num_threads(numThreads)
+
   ! Solve the linear system of equations using the Jacobi method
   t0 = omp_get_wtime()
 
-  do i=1,n+1
-    row_next_iteration(i)=1
-  end do
-  !$omp end do
-  !$omp end parallel
-
-  !iteration counter, shared
-  iterations=1
-
-  !$omp parallel default(private) shared(iterations, row_next_iteration, T)
-  !$omp do schedule ( STATIC, 1 )
   do k=1, maxiter
-     threadId = omp_get_thread_num()
+    error = 0.0D0
+    !$OMP parallel default(private) shared(T,k) reduction(max:error)
+    myid = omp_get_thread_num()
+    teamSize = omp_get_num_threads()
+    evCols = n/teamSize
 
-     tmp1=T(1:n,0)
-     error=0.0D0
+    tmpLeft = T(1:n, myid*evCols)
+    if(myid == teamSize-1) then
+      tmpLast = T(1:n, n+1)
+      myCols = evCols + mod(n, teamSize)
+    else
+      myCols = evCols
+      tmpLast = T(1:n,(myid+1)*evCols+1)
+    end if
 
-     do j=1,n
-        if(j /= n) then
-           !wait for previous iteration to finish, works like a lock
-           do while (row_next_iteration(j+1) < k)
-              cycle
-           end do
-        end if
+    !$OMP BARRIER
+    do j=myid*evCols+1, myid*evCols+myCols
+      tmpMid = T(1:n, j)
+      if (j == (myid+1)*myCols) then
+        tmpRight = tmpLast
+      else
+        tmpRight = T(1:n, j+1)
+      end if
+      T(1:n, j) = ( T(0:n-1, j) + T(2:n, j) + tmpRight + tmpLeft )/4.0D0
+      error = max( error, maxval( abs(tmpMid - T(1:n, j)) ) )
+      tmpLeft = tmpMid
+    end do
+    !$OMP end parallel
 
-        tmp2=T(1:n,j)
-        T(1:n,j)=(T(0:n-1,j)+T(2:n+1,j)+T(1:n,j+1)+tmp1)/4.0D0
-        error=max(error,maxval(abs(tmp2-T(1:n,j))))
-        tmp1=tmp2   
-
-        !No critical section needed due to only one thread per row
-        row_next_iteration(j) = k + 1
-     end do
-
-     !$omp critical
-     iterations = iterations + 1
-     !$omp end critical
-
+    if (error < tol) then
+      exit
+    end if
   end do
-  !$omp end do
-  !$omp end parallel
 
   t1 = omp_get_wtime()
 
 
-  write(unit=*,fmt=*) 'Time:',t1-t0,'Number of Iterations:',k
-  write(unit=*,fmt=*) 'Temperature of element T(1,1)  =',T(1,1)
+  write(unit=*, fmt=*) 'Time:',t1-t0
+  ! write(unit=*,fmt=*) 'Time:',t1-t0,'Number of Iterations:',k
+  ! write(unit=*,fmt=*) 'Temperature of element T(1,1)  =',T(1,1)
 
   ! Uncomment the next part if you want to write the whole solution
   ! to a file. Useful for plotting. 
