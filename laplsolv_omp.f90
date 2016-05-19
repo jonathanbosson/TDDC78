@@ -1,93 +1,80 @@
 program laplsolv
 !-----------------------------------------------------------------------
-! Serial program for solving the heat conduction problem 
-! on a square using the Jacobi method. 
+! Serial program for solving the heat conduction problem
+! on a square using the Jacobi method.
 ! Written by Fredrik Berntsson (frber@math.liu.se) March 2003
 ! Modified by Berkant Savas (besav@math.liu.se) April 2006
 !-----------------------------------------------------------------------
-
 use omp_lib
-
-  integer, parameter                  :: n=1000, maxiter=1000
-  double precision,parameter          :: tol=1.0E-3
-  double precision,dimension(0:n+1,0:n+1) :: T
-  double precision,dimension(n)       :: tmpLeft, tmpMid, tmpRight,tmpLast
-  double precision                    :: error,x
-  real                                :: t1,t0
-  integer                             :: j,k, numThreads
-  integer                             :: myid, teamSize, evCols, myCols
-  character(len=20)                   :: str, arg
-
+  
+  integer, parameter                   :: n = 1000, maxiter = 1000
+  character(len=20), parameter         :: filename = "measures.csv"
+  double precision, parameter          :: tol = 1.0E-3
+  double precision, dimension(0:n+1, 0:n+1) :: T
+  double precision, dimension(n)       :: tmp1, tmp2, tmp3
+  double precision                     :: error,x,t0,t1
+  integer                              :: j, k, numK, rowLast, rowFirst
+  character(len = 20)                  :: str
+  logical                              :: exist
 
   ! Set boundary conditions and initial values for the unknowns
-  T=0.0D0
+  T = 0.0D0
   T(0:n+1 , 0)     = 1.0D0
   T(0:n+1 , n+1)   = 1.0D0
   T(n+1   , 0:n+1) = 2.0D0
-  
 
-  !call getarg(1, arg)
-  !read(arg, '(i10)' ) numThreads
-  !call omp_set_num_threads(numThreads)
-
-  numThreads = omp_get_max_threads()
-
-  call cpu_time(t0)
-  !t0 = omp_get_wtime()
 
   ! Solve the linear system of equations using the Jacobi method
-  do k=1, maxiter
+  t0 = omp_get_wtime()
+
+  !$omp parallel private(j, k, tmp1, tmp2, tmp3, rowFirst, rowLast) shared(T, error)
+
+  rowLast = (omp_get_thread_num() + 1) * (n / omp_get_num_threads())
+  rowFirst = omp_get_thread_num() * (n / omp_get_num_threads())
+
+  do k = 1, maxiter
     error = 0.0D0
 
-    !$OMP parallel default(private) shared(T,k) reduction(max:error)
-    myid = omp_get_thread_num()
-    teamSize = omp_get_num_threads()
-    evCols = n/teamSize
+    tmp1 = T(1:n, rowFirst)
+    tmp3 = T(1:n, rowLast)
 
-    tmpLeft = T(1:n, myid*evCols)
-    if(myid == teamSize-1) then
-      tmpLast = T(1:n, n+1)
-      myCols = evCols + mod(n, teamSize)
-    else
-      myCols = evCols
-      tmpLast = T(1:n,(myid+1)*evCols+1)
-    end if
+    !$omp barrier
+    !$omp do reduction(max : error)
+    do j = 1, n
+      tmp2 = T(1:n, j)
 
-    !$OMP BARRIER
-    do j=myid*evCols+1, myid*evCols+myCols
-      tmpMid = T(1:n, j)
-      if (j == (myid+1)*myCols) then
-        tmpRight = tmpLast
+      if (j == rowLast) then
+        T(1:n, j) = ( T(0:n-1, j) + T(2:n+1, j) + tmp3 + tmp1 )/4.0D0
       else
-        tmpRight = T(1:n, j+1)
+        T(1:n, j) = ( T(0:n-1, j) + T(2:n+1, j) + T(1:n, j+1) + tmp1 )/4.0D0
       end if
-      T(1:n, j) = ( T(0:n-1, j) + T(2:n+1, j) + tmpRight + tmpLeft )/4.0D0
-      error = max( error, maxval( abs(tmpMid - T(1:n, j)) ) )
-      tmpLeft = tmpMid
+
+      error = max( error, maxval(abs(tmp2 - T(1:n, j))) )
+      tmp1 = tmp2
     end do
-    !$OMP end parallel
 
     if (error < tol) then
+      numK = k
       exit
     end if
+    !$omp barrier
+
   end do
-
-  !t1 = omp_get_wtime()
-  call cpu_time(t1)
-
-
-  !write(unit=*, fmt=*) 'Time:',t1-t0
-  write(unit=*,fmt=*) 'Time:',t1-t0,'Number of Iterations:',k
-  write(unit=*,fmt=*) 'Temperature of element T(1,1)  =',T(1,1)
-
-  ! Uncomment the next part if you want to write the whole solution
-  ! to a file. Useful for plotting. 
+  !$omp end parallel
   
-  !open(unit=7,action='write',file='result.dat',status='unknown')
-  !write(unit=str,fmt='(a,i6,a)') '(',N,'F10.6)'
-  !do i=0,n+1
-  !   write (unit=7,fmt=str) T(i,0:n+1)  
-  !end do
-  !close(unit=7)
-  
+  t1 = omp_get_wtime()
+
+  write(unit=*, fmt=*) 'Time:', t1 - t0, 'Number of Iterations:', numK
+  write(unit=*, fmt=*) 'Temperature of element T(1,1)  = ', T(1, 1)
+
+  inquire(file=filename, exist=exist)
+  if (exist) then
+    open(12, file=filename, status="old", position="append", action="write")
+  else
+    open(12, file=filename, status="new", action="write")
+  end if
+
+  write(12, *) omp_get_max_threads(),t1-t0
+  close(12)
+
 end program laplsolv
