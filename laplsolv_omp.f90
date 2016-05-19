@@ -52,6 +52,7 @@ use omp_lib
       error = max( error, maxval(abs(tmp2 - T(1:n, j))) )
       tmp1 = tmp2
     end do
+    !$omp end do
 
     if (error < tol) then
       numK = k
