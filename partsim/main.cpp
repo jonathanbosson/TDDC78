@@ -69,14 +69,97 @@ int main (int argc, char *argv[]) {
   		particles.push_back(p);
   	}
 
+    // Declare some variables before for-loop
   	float collision;
   	int newTarget;
-  	pcord_t* rec;
-  	rec = new pcord_t[PARTICLE_BUFFER_SIZE];
+  	pcord_t* recBuffer = new pcord_t[PARTICLE_BUFFER_SIZE];
 
   	clock_gettime(CLOCK_REALTIME, &stime);
   	// Work work
+    for (int t = 0; t < MAX_TIME; ++t) {
+      int i = 0;
+      int numParticles = particles.size();
 
+      // Particle loop!
+      while(i < numParticles) {
+        collision = -1; // no hit
+
+        VT_enter(vtCollision, VT_NOSCL);
+        // Check collision with all other particles
+        for (int k = i + 1; k < particles.size(); ++k) {
+          collision = collide(&particles[i].pcord, &particles[k].pcord);
+          // if hit call calculate momentum
+          if (collision >= 0) {
+            interact(&particles[i].pcord, &particles[k].pcord, collision);
+            localTotalMom += wall_collide(&particles[j].pcord, wall);
+            continue;
+          }
+        }
+
+        VT_leave(VT_NOSCL);
+        if (collision < 0) { // if no hit, translate
+          feuler(&particles[i].pcord, 1);
+          localTotalMom += wall_collide(&particles[i].pcord, wall);
+        }
+
+        newTarget = destination(AREA, particles[i].pcord);
+        if(newTarget != myid) {
+          travellers[newTarget].push_back(particles[i].pcord); // add to new vector
+          particles.erase(particles.begin() + i); // remove from first vector
+          numParticles = particles.size();
+        } else
+          i++;
+      }
+
+      int sentParticles = 0;
+      pcord_t newCord;
+      particle_t newParticle;
+      MPI_Request req;
+      VT_enter(vtComm, VT_NOSCL);
+
+      // Send data out of order to all processes
+      for (int i = 0; i < numProc; ++i) {
+        if (i != myid) {
+          MPI_Isend(&travellers[i][0], travellers[i].size(), pcoordType, i, 0, MPI_COMM_WORLD, &req);
+          sentParticles += travellers[i].size();
+        }
+      }
+
+      // Get data from everyone else
+      for (int i = 0; i < numProc - 1; ++i) {
+        int recSize;
+        bool flag = false;
+        while (!flag)
+          MPI_Iprobe(MPI_ANY_SOURCE, 0, MPI_COMM_WORLD, &flag, &status);
+        MPI_Get_count(&status, pcoordType, &recSize);
+        MPI_Recv(recBuffer, recSize, pcoordType, status.MPI_SOURCE, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        
+        for (int j = 0; j < recSize; ++j) {
+          newCoord.x = recBuffer[j].x;
+          newCoord.y = recBuffer[j].y;
+          newCoord.vy = recBuffer[j].vy;
+          newCoord.vx = recBuffer[j].vx;
+
+          newParticle.pcord = coord;
+          newParticle.ptype = 0;
+          particles.push_back(newParticle);
+        }
+      }
+      VT_leave(VT_NOSCL);
+      VT_enter(vtSync, VT_NOSCL);
+      MPI_Barrier(MPI_COMM_WORLD);
+      VT_leave(VT_NOSCL);
+
+      // Empty traveller list
+      for (int i = 0; i < numProc; ++i)
+        travellers[i].clear();
+
+      VT_countval(1, &pressureCounter, &localTotalMom);
+    } // end of time loop
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Reduce(&localTotalMom, &totalMom, numProc, MPI_DOUBLE, MPI_SUM, root, MPI_COMM_WORLD);
+    VT_leave(VT_NOSCL);
 
   	if (myid == root) {
   		clock_gettime(CLOCK_REALTIME, &etime);
@@ -85,10 +168,6 @@ int main (int argc, char *argv[]) {
 		printf("Pressure is %e\n", totalMom / (MAX_TIME * WALL_LENGTH));	
   	}
   	
-
-
-
-
-
-
+    MPI_Finalize();
+    return 0;
 }
