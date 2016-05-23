@@ -16,10 +16,10 @@ int getYStart(const int threadId, const int numThreads, const int ysize) {
 
 //Returns the end y for given thread
 int getYEnd(const int threadId, const int numThreads, const int ysize) {
-  int yEnd = (threadId+1) * (ysize/numThreads);
+  int yEnd = (threadId + 1) * (ysize/numThreads);
   //Add the leftoverpixels to the last thread
-  if(threadId == numThreads-1)
-    yEnd += ysize%numThreads;
+  if(threadId == numThreads - 1)
+    yEnd += ysize % numThreads;
 
   return yEnd;
 }
@@ -66,10 +66,11 @@ int main (int argc, char ** argv) {
       threadData[i].threadId = i;
       threadData[i].xsize = xsize;
 
-      //Set the y_interval to be processed by the thread
+
+      //Set the y-interval to be processed by the thread
       const int yStart = getYStart(i, numThreads, ysize);
-      threadData[i].src = src + yStart;
-      threadData[i].ysize = getYEnd(i, numThreads, ysize);
+      threadData[i].src = src;
+      threadData[i].ysize = getYEnd(i, numThreads, ysize) - yStart;
     
       int rc = pthread_create(&threads[i], NULL, thresfilter, (void*)&threadData[i]);
       if(rc){
